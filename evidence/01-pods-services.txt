@@ -1,0 +1,300 @@
+EXTRAITS DE TERMINAL — ADRESSES ET HOTE ANONYMISES
+Sections sélectionnées ; les omissions sont indiquées par les séparateurs.
+Les adresses de documentation ne sont pas routables dans le lab.
+
+
+=== Cluster et métriques ===
+
+$ kubectl get pods -n kube-system
+NAME                                      READY   STATUS      RESTARTS        AGE
+coredns-577d995dff-l5gsd                  1/1     Running     0               3m33s
+helm-install-gateway-api-crd-2v4kq        0/1     Completed   0               3m33s
+helm-install-traefik-9wngc                0/1     Completed   1 (3m21s ago)   3m33s
+helm-install-traefik-crd-s4ngc            0/1     Completed   0               3m33s
+local-path-provisioner-56c6584955-q7xg4   1/1     Running     0               3m33s
+metrics-server-778c4649b4-jrh9z           1/1     Running     0               3m33s
+svclb-traefik-59c34855-nqxkq              2/2     Running     0               3m19s
+traefik-68df944ff7-djlc7                  1/1     Running     0               3m19s
+$ kubectl top nodes
+NAME   CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)
+lab-node   93m          2%       1671Mi          10%
+$ kubectl version
+kubectl get nodes -o wide
+kubectl get pods -A
+kubectl get svc -A
+kubectl get storageclass
+Client Version: v1.37.2+k3s1
+Kustomize Version: v5.8.1
+Server Version: v1.37.2+k3s1
+NAME   STATUS   ROLES           AGE     VERSION        INTERNAL-IP      EXTERNAL-IP   OS-IMAGE                      KERNEL-VERSION                          CONTAINER-RUNTIME
+lab-node   Ready    control-plane   3m48s   v1.37.2+k3s1   192.0.2.10   <none>        AlmaLinux 10.3 (Mauve Lion)   6.12.0-264.20.1.el10_3.x86_64 (amd64)   containerd://2.3.7-k3s1
+NAMESPACE     NAME                                      READY   STATUS      RESTARTS        AGE
+kube-system   coredns-577d995dff-l5gsd                  1/1     Running     0               3m42s
+kube-system   helm-install-gateway-api-crd-2v4kq        0/1     Completed   0               3m42s
+kube-system   helm-install-traefik-9wngc                0/1     Completed   1 (3m30s ago)   3m42s
+kube-system   helm-install-traefik-crd-s4ngc            0/1     Completed   0               3m42s
+kube-system   local-path-provisioner-56c6584955-q7xg4   1/1     Running     0               3m42s
+kube-system   metrics-server-778c4649b4-jrh9z           1/1     Running     0               3m42s
+kube-system   svclb-traefik-59c34855-nqxkq              2/2     Running     0               3m28s
+kube-system   traefik-68df944ff7-djlc7                  1/1     Running     0               3m28s
+NAMESPACE     NAME             TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)                      AGE
+default       kubernetes       ClusterIP      203.0.113.1       <none>           443/TCP                      3m51s
+kube-system   kube-dns         ClusterIP      203.0.113.10      <none>           53/UDP,53/TCP,9153/TCP       3m48s
+kube-system   metrics-server   ClusterIP      203.0.113.50    <none>           443/TCP                      3m47s
+kube-system   traefik          LoadBalancer   203.0.113.101   192.0.2.10   80:31589/TCP,443:31566/TCP   3m29s
+NAME                   PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+local-path (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  3m48s
+
+
+=== Namespace et contexte ===
+
+$ kubectl create namespace lab
+namespace/lab created
+$ kubectl get ns
+NAME              STATUS   AGE
+default           Active   8m35s
+kube-node-lease   Active   8m35s
+kube-public       Active   8m35s
+kube-system       Active   8m35s
+lab               Active   6s
+$ kubectl config set-context --current --namespace=lab
+Context "default" modified.
+$ kubectl config get-contexts
+CURRENT   NAME      CLUSTER   AUTHINFO   NAMESPACE
+*         default   default   default    lab
+$ kubectl run nginx-test --image=nginx:alpine
+pod/nginx-test created
+$ kubectl get pods -w
+NAME         READY   STATUS    RESTARTS   AGE
+nginx-test   1/1     Running   0          7s
+
+
+=== Conteneur Alpine, processus et noyau partagé ===
+
+/ # cat /etc/os-release
+NAME="Alpine Linux"
+ID=alpine
+VERSION_ID=3.24.4
+PRETTY_NAME="Alpine Linux v3.24"
+HOME_URL="https://alpinelinux.org/"
+BUG_REPORT_URL="https://gitlab.alpinelinux.org/alpine/aports/-/issues"
+/ # ps
+PID   USER     TIME  COMMAND
+    1 root      0:00 nginx: master process nginx -g daemon off;
+   30 nginx     0:00 nginx: worker process
+   31 nginx     0:00 nginx: worker process
+   32 nginx     0:00 nginx: worker process
+   33 nginx     0:00 nginx: worker process
+   34 root      0:00 sh
+   43 root      0:00 ps
+/ # ls /usr/share/nginx/html/
+50x.html    index.html
+
+[...]
+
+root
+/ # uname -r
+6.12.0-264.20.1.el10_3.x86_64
+/ # exit
+
+
+=== Accès HTTP au Pod ===
+
+curl http://$POD_IP
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, nginx is successfully installed and working.
+Further configuration is required for the web server, reverse proxy,
+API gateway, load balancer, content cache, or other features.</p>
+
+[...]
+
+$ kubectl port-forward pod/nginx-test 8080:80
+Forwarding from 127.0.0.1:8080 -> 80
+Forwarding from [::1]:8080 -> 80
+Handling connection for 8080  .. $ curl http://localhost:8080
+
+[...]
+
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, nginx is successfully installed and working.
+Further configuration is required for the web server, reverse proxy,
+
+
+=== Suppression du Pod autonome et création du Deployment ===
+
+$ kubectl delete pod nginx-test
+pod "nginx-test" deleted from lab namespace
+$ k get pods
+No resources found in lab namespace.
+$ kubectl get pods
+No resources found in lab namespace.
+$ kubectl create deployment nginx \
+    --image=nginx:alpine \
+    --replicas=3
+deployment.apps/nginx created
+$ kubectl get deployments
+kubectl get replicasets
+kubectl get pods -o wide
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE
+nginx   3/3     3            3           6s
+NAME               DESIRED   CURRENT   READY   AGE
+nginx-7b8b87776c   3         3         3       6s
+NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE   NOMINATED NODE   READINESS GATES
+nginx-7b8b87776c-4jgql   1/1     Running   0          6s    198.51.100.12   lab-node   <none>           <none>
+nginx-7b8b87776c-6g7cg   1/1     Running   0          6s    198.51.100.11   lab-node   <none>           <none>
+nginx-7b8b87776c-jgpb2   1/1     Running   0          6s    198.51.100.13   lab-node   <none>           <none>
+
+
+=== Scaling et self-healing ===
+
+$ kubectl scale deployment nginx --replicas=5
+deployment.apps/nginx scaled
+$ kubectl get pods -o wide
+NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE   NOMINATED NODE   READINESS GATES
+nginx-7b8b87776c-4jgql   1/1     Running   0          24m   198.51.100.12   lab-node   <none>           <none>
+nginx-7b8b87776c-6g7cg   1/1     Running   0          24m   198.51.100.11   lab-node   <none>           <none>
+nginx-7b8b87776c-8mlfn   1/1     Running   0          4s    198.51.100.14   lab-node   <none>           <none>
+nginx-7b8b87776c-jgpb2   1/1     Running   0          24m   198.51.100.13   lab-node   <none>           <none>
+nginx-7b8b87776c-n2nn2   1/1     Running   0          4s    198.51.100.15   lab-node   <none>           <none>
+$ kubectl scale deployment nginx --replicas=3
+deployment.apps/nginx scaled
+$ kubectl get pods -w
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-7b8b87776c-4jgql   1/1     Running   0          25m
+nginx-7b8b87776c-6g7cg   1/1     Running   0          25m
+nginx-7b8b87776c-jgpb2   1/1     Running   0          25m
+nginx-7b8b87776c-4jgql   1/1     Terminating   0          25m
+nginx-7b8b87776c-hr8xn   0/1     Pending       0          0s
+nginx-7b8b87776c-4jgql   1/1     Terminating   0          25m
+nginx-7b8b87776c-hr8xn   0/1     Pending       0          0s
+nginx-7b8b87776c-hr8xn   0/1     ContainerCreating   0          0s
+nginx-7b8b87776c-4jgql   0/1     Completed           0          25m
+nginx-7b8b87776c-hr8xn   0/1     ContainerCreating   0          0s
+nginx-7b8b87776c-hr8xn   1/1     Running             0          0s
+nginx-7b8b87776c-4jgql   0/1     Completed           0          25m
+nginx-7b8b87776c-4jgql   0/1     Completed           0          25m
+
+[...]
+
+$ kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-7b8b87776c-4jgql   1/1     Running   0          25m
+nginx-7b8b87776c-6g7cg   1/1     Running   0          25m
+nginx-7b8b87776c-jgpb2   1/1     Running   0          25m
+$ kubectl delete pod nginx-7b8b87776c-4jgql
+pod "nginx-7b8b87776c-4jgql" deleted from lab namespace
+
+
+=== Service et EndpointSlices ===
+
+$ kubectl expose deployment nginx \
+    --port=80 \
+    --target-port=80 \
+    --type=ClusterIP
+service/nginx exposed
+$ kubectl get svc
+NAME    TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+nginx   ClusterIP   203.0.113.29   <none>        80/TCP    8s
+$ kubectl describe svc nginx
+Name:                     nginx
+Namespace:                lab
+Labels:                   app=nginx
+Annotations:              <none>
+Selector:                 app=nginx
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       203.0.113.29
+IPs:                      203.0.113.29
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+Endpoints:                198.51.100.11:80,198.51.100.13:80,198.51.100.16:80
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+$ kubectl get endpointslices
+NAME          ADDRESSTYPE   PORTS   ENDPOINTS                          AGE
+nginx-zslms   IPv4          80      198.51.100.11,198.51.100.13,198.51.100.16   35s
+
+[...]
+
+curl http://$SERVICE_IP
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, nginx is successfully installed and working.
+Further configuration is required for the web server, reverse proxy,
+API gateway, load balancer, content cache, or other features.</p>
+
+
+=== Validation finale des TP 01–03 ===
+
+$ kubectl get deploy,rs,pods,svc -o wide
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES         SELECTOR
+deployment.apps/nginx   3/3     3            3           40m   nginx        nginx:alpine   app=nginx
+
+NAME                               DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES         SELECTOR
+replicaset.apps/nginx-7b8b87776c   3         3         3       40m   nginx        nginx:alpine   app=nginx,pod-template-hash=7b8b87776c
+
+NAME                         READY   STATUS    RESTARTS   AGE   IP           NODE   NOMINATED NODE   READINESS GATES
+pod/nginx-7b8b87776c-6g7cg   1/1     Running   0          40m   198.51.100.11   lab-node   <none>           <none>
+pod/nginx-7b8b87776c-hr8xn   1/1     Running   0          14m   198.51.100.16   lab-node   <none>           <none>
+pod/nginx-7b8b87776c-jgpb2   1/1     Running   0          40m   198.51.100.13   lab-node   <none>           <none>
+
+NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE    SELECTOR
+service/nginx   ClusterIP   203.0.113.29   <none>        80/TCP    109s   app=nginx
+$ kubectl get endpointslices
+NAME          ADDRESSTYPE   PORTS   ENDPOINTS                          AGE
+nginx-zslms   IPv4          80      198.51.100.11,198.51.100.13,198.51.100.16   112s
+$ 
+$ kubectl top pods
+NAME                     CPU(cores)   MEMORY(bytes)
+nginx-7b8b87776c-6g7cg   0m           4Mi
+nginx-7b8b87776c-hr8xn   0m           4Mi
+nginx-7b8b87776c-jgpb2   0m           4Mi
+
+
+=== Événements de réconciliation ===
+
+17m         Normal   Scheduled           pod/nginx-7b8b87776c-n2nn2    Successfully assigned lab/nginx-7b8b87776c-n2nn2 to lab-node
+17m         Normal   Pulled              pod/nginx-7b8b87776c-n2nn2    Container image "nginx:alpine" already present on machine and can be accessed by the pod
+17m         Normal   Created             pod/nginx-7b8b87776c-n2nn2    Container created
+17m         Normal   Started             pod/nginx-7b8b87776c-n2nn2    Container started
+17m         Normal   ScalingReplicaSet   deployment/nginx              Scaled up replica set nginx-7b8b87776c from 3 to 5
+17m         Normal   Scheduled           pod/nginx-7b8b87776c-8mlfn    Successfully assigned lab/nginx-7b8b87776c-8mlfn to lab-node
+17m         Normal   Pulled              pod/nginx-7b8b87776c-8mlfn    Container image "nginx:alpine" already present on machine and can be accessed by the pod
+17m         Normal   Created             pod/nginx-7b8b87776c-8mlfn    Container created
+17m         Normal   SuccessfulCreate    replicaset/nginx-7b8b87776c   Created pod: nginx-7b8b87776c-8mlfn
+17m         Normal   SuccessfulCreate    replicaset/nginx-7b8b87776c   Created pod: nginx-7b8b87776c-n2nn2
+17m         Normal   Started             pod/nginx-7b8b87776c-8mlfn    Container started
+17m         Normal   SuccessfulDelete    replicaset/nginx-7b8b87776c   Deleted pod: nginx-7b8b87776c-8mlfn
+17m         Normal   Killing             pod/nginx-7b8b87776c-8mlfn    Stopping container nginx
+17m         Normal   SuccessfulDelete    replicaset/nginx-7b8b87776c   Deleted pod: nginx-7b8b87776c-n2nn2
+17m         Normal   Killing             pod/nginx-7b8b87776c-n2nn2    Stopping container nginx
+17m         Normal   ScalingReplicaSet   deployment/nginx              Scaled down replica set nginx-7b8b87776c from 5 to 3
+16m         Normal   SuccessfulCreate    replicaset/nginx-7b8b87776c   Created pod: nginx-7b8b87776c-hr8xn
+16m         Normal   Scheduled           pod/nginx-7b8b87776c-hr8xn    Successfully assigned lab/nginx-7b8b87776c-hr8xn to lab-node
+16m         Normal   Pulled              pod/nginx-7b8b87776c-hr8xn    Container image "nginx:alpine" already present on machine and can be accessed by the pod
+16m         Normal   Created             pod/nginx-7b8b87776c-hr8xn    Container created
+16m         Normal   Started             pod/nginx-7b8b87776c-hr8xn    Container started
+16m         Normal   Killing             pod/nginx-7b8b87776c-4jgql    Stopping container nginx

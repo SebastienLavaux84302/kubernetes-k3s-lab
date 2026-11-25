@@ -1,0 +1,346 @@
+EXTRAITS DE TERMINAL — ADRESSES ET HOTE ANONYMISES
+Sections sélectionnées ; les omissions sont indiquées par les séparateurs.
+Les adresses de documentation ne sont pas routables dans le lab.
+
+
+=== Diff déclaratif : sondes, ressources et port ===
+
+@@ -31,8 +31,36 @@
+       containers:
+       - image: nginx:alpine
+         imagePullPolicy: IfNotPresent
++        livenessProbe:
++          failureThreshold: 3
++          httpGet:
++            path: /
++            port: 80
++            scheme: HTTP
++          initialDelaySeconds: 5
++          periodSeconds: 10
++          successThreshold: 1
++          timeoutSeconds: 1
+         name: nginx
+-        resources: {}
++        ports:
++        - containerPort: 80
++          protocol: TCP
++        readinessProbe:
++          failureThreshold: 3
++          httpGet:
++            path: /
++            port: 80
++            scheme: HTTP
++          periodSeconds: 5
++          successThreshold: 1
++          timeoutSeconds: 1
++        resources:
++          limits:
++            cpu: 200m
++            memory: 128Mi
++          requests:
++            cpu: 50m
++            memory: 32Mi
+         terminationMessagePath: /dev/termination-log
+         terminationMessagePolicy: File
+       dnsPolicy: ClusterFirst
+
+[...]
+
+@@ -17,7 +17,8 @@
+   - IPv4
+   ipFamilyPolicy: SingleStack
+   ports:
+-  - port: 80
++  - name: http
++    port: 80
+     protocol: TCP
+     targetPort: 80
+   selector:
+
+
+=== Validation API et application ===
+
+$ kubectl apply --dry-run=server -f .
+Warning: resource deployments/nginx is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+deployment.apps/nginx configured (server dry run)
+Warning: resource services/nginx is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+service/nginx configured (server dry run)
+$ kubectl apply -f .
+Warning: resource deployments/nginx is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+deployment.apps/nginx configured
+Warning: resource services/nginx is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+service/nginx configured
+$ kubectl rollout status deployment/nginx
+deployment "nginx" successfully rolled out
+$ kubectl get deploy,rs,pods,svc -o wide
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES         SELECTOR
+deployment.apps/nginx   3/3     3            3           82m   nginx        nginx:alpine   app=nginx
+
+NAME                               DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES         SELECTOR
+replicaset.apps/nginx-68bb5c6855   3         3         3       13s   nginx        nginx:alpine   app=nginx,pod-template-hash=68bb5c6855
+replicaset.apps/nginx-7b8b87776c   0         0         0       82m   nginx        nginx:alpine   app=nginx,pod-template-hash=7b8b87776c
+
+NAME                         READY   STATUS    RESTARTS   AGE   IP           NODE   NOMINATED NODE   READINESS GATES
+pod/nginx-68bb5c6855-54shj   1/1     Running   0          10s   198.51.100.19   lab-node   <none>           <none>
+pod/nginx-68bb5c6855-8f5sj   1/1     Running   0          13s   198.51.100.17   lab-node   <none>           <none>
+pod/nginx-68bb5c6855-l6n8w   1/1     Running   0          11s   198.51.100.18   lab-node   <none>           <none>
+
+NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+service/nginx   ClusterIP   203.0.113.29   <none>        80/TCP    43m   app=nginx
+
+
+=== Historique et simulation image inexistante ===
+
+$ kubectl rollout history deployment/nginx
+deployment.apps/nginx
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+
+$ kubectl get rs
+NAME               DESIRED   CURRENT   READY   AGE
+nginx-68bb5c6855   3         3         3       61s
+nginx-7b8b87776c   0         0         0       83m
+$ 
+$ kubectl set image deployment/nginx \
+    nginx=nginx:version-inexistante
+deployment.apps/nginx image updated
+$ kubectl get pods -w
+NAME                     READY   STATUS         RESTARTS   AGE
+nginx-68bb5c6855-54shj   1/1     Running        0          73s
+nginx-68bb5c6855-8f5sj   1/1     Running        0          76s
+nginx-68bb5c6855-l6n8w   1/1     Running        0          74s
+nginx-9cf4588f5-7fgfg    0/1     ErrImagePull   0          3s
+
+[...]
+
+1s          Normal    Pulling             pod/nginx-9cf4588f5-7fgfg     Pulling image "nginx:version-inexistante"
+18s         Normal    SuccessfulCreate    replicaset/nginx-9cf4588f5    Created pod: nginx-9cf4588f5-7fgfg
+18s         Normal    Scheduled           pod/nginx-9cf4588f5-7fgfg     Successfully assigned lab/nginx-9cf4588f5-7fgfg to lab-node
+18s         Normal    ScalingReplicaSet   deployment/nginx              Scaled up replica set nginx-9cf4588f5 from 0 to 1
+17s         Warning   Failed              pod/nginx-9cf4588f5-7fgfg     Error: ErrImagePull
+17s         Warning   Failed              pod/nginx-9cf4588f5-7fgfg     Failed to pull image "nginx:version-inexistante": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/library/nginx:version-inexistante": failed to resolve reference "docker.io/library/nginx:version-inexistante": docker.io/library/nginx:version-inexistante: not found
+16s         Warning   Failed              pod/nginx-9cf4588f5-7fgfg     Error: ImagePullBackOff
+16s         Normal    BackOff             pod/nginx-9cf4588f5-7fgfg     Back-off pulling image "nginx:version-inexistante"
+$ kubectl get pods
+NAME                     READY   STATUS             RESTARTS   AGE
+nginx-68bb5c6855-54shj   1/1     Running            0          96s
+nginx-68bb5c6855-8f5sj   1/1     Running            0          99s
+nginx-68bb5c6855-l6n8w   1/1     Running            0          97s
+nginx-9cf4588f5-7fgfg    0/1     ImagePullBackOff   0          26s
+
+
+=== Diagnostic de l’échec de récupération ===
+
+Controlled By:  ReplicaSet/nginx-9cf4588f5
+Containers:
+  nginx:
+    Container ID:
+    Image:          nginx:version-inexistante
+    Image ID:
+    Port:           80/TCP
+    Host Port:      0/TCP
+    State:          Waiting
+      Reason:       ErrImagePull
+    Ready:          False
+    Restart Count:  0
+    Limits:
+      cpu:     200m
+      memory:  128Mi
+    Requests:
+      cpu:        50m
+      memory:     32Mi
+    Liveness:     http-get http://:80/ delay=5s timeout=1s period=10s successThreshold=1 failureThreshold=3
+    Readiness:    http-get http://:80/ delay=0s timeout=1s period=5s successThreshold=1 failureThreshold=3
+
+[...]
+
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                From               Message
+  ----     ------     ----               ----               -------
+  Normal   Scheduled  41s                default-scheduler  Successfully assigned lab/nginx-9cf4588f5-7fgfg to lab-node
+  Normal   Pulling    24s (x2 over 41s)  kubelet            spec.containers{nginx}: Pulling image "nginx:version-inexistante"
+  Warning  Failed     23s (x2 over 40s)  kubelet            spec.containers{nginx}: Failed to pull image "nginx:version-inexistante": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/library/nginx:version-inexistante": failed to resolve reference "docker.io/library/nginx:version-inexistante": docker.io/library/nginx:version-inexistante: not found
+  Warning  Failed     23s (x2 over 40s)  kubelet            spec.containers{nginx}: Error: ErrImagePull
+  Normal   BackOff    10s (x2 over 39s)  kubelet            spec.containers{nginx}: Back-off pulling image "nginx:version-inexistante"
+  Warning  Failed     10s (x2 over 39s)  kubelet            spec.containers{nginx}: Error: ImagePullBackOff
+
+
+=== Rollback et diff final ===
+
+$ kubectl rollout undo deployment/nginx
+Warning: resource deployments/nginx was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+deployment.apps/nginx rolled back
+$ kubectl rollout status deployment/nginx
+deployment "nginx" successfully rolled out
+$ kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-68bb5c6855-54shj   1/1     Running   0          2m8s
+nginx-68bb5c6855-8f5sj   1/1     Running   0          2m11s
+nginx-68bb5c6855-l6n8w   1/1     Running   0          2m9s
+$ kubectl diff -f deployment.yaml
+$ 
+
+
+=== DNS interne et requête HTTP ===
+
+/ # nslookup nginx
+Server:         203.0.113.10
+Address:        203.0.113.10:53
+
+** server can't find nginx.svc.cluster.local: NXDOMAIN
+
+Name:   nginx.lab.svc.cluster.local
+Address: 203.0.113.29
+
+
+** server can't find nginx.cluster.local: NXDOMAIN
+
+** server can't find nginx.cluster.local: NXDOMAIN
+
+** server can't find nginx.svc.cluster.local: NXDOMAIN
+
+** server can't find nginx.localdomain: NXDOMAIN
+
+** server can't find nginx.localdomain: NXDOMAIN
+
+[...]
+
+/ # nslookup nginx.lab.svc.cluster.local
+Server:         203.0.113.10
+Address:        203.0.113.10:53
+
+
+Name:   nginx.lab.svc.cluster.local
+Address: 203.0.113.29
+
+[...]
+
+/ # wget -qO- http://nginx
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, nginx is successfully installed and working.
+Further configuration is required for the web server, reverse proxy,
+API gateway, load balancer, content cache, or other features.</p>
+
+[...]
+
+/ # cat /etc/resolv.conf
+search lab.svc.cluster.local svc.cluster.local cluster.local localdomain
+nameserver 203.0.113.10
+options ndots:5
+/ # exit
+Session ended, resume using 'kubectl attach debug -c debug -n lab -i -t' command
+pod "debug" deleted from lab namespace
+
+
+=== Ingress Traefik ===
+
+$ kubectl get ingressclass
+NAME                CONTROLLER                      PARAMETERS   AGE
+traefik (default)   traefik.io/ingress-controller   <none>       101m
+$ kubectl get svc -n kube-system traefik
+NAME      TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)                      AGE
+traefik   LoadBalancer   203.0.113.101   192.0.2.10   80:31589/TCP,443:31566/TCP   102m
+$ vim ingress.yaml
+$ kubectl apply -f ingress.yaml
+ingress.networking.k8s.io/nginx created
+$ kubectl get ingress
+NAME    CLASS     HOSTS            ADDRESS          PORTS   AGE
+nginx   traefik   nginx.lab.test   192.0.2.10   80      4s
+$ kubectl describe ingress nginx
+Name:             nginx
+Labels:           <none>
+Namespace:        lab
+Address:          192.0.2.10
+Ingress Class:    traefik
+Default backend:  <default>
+Rules:
+  Host            Path  Backends
+  ----            ----  --------
+  nginx.lab.test
+                  /   nginx:80 (198.51.100.17:80,198.51.100.18:80,198.51.100.19:80)
+Annotations:      <none>
+Events:           <none>
+$ curl -H 'Host: nginx.lab.test' \
+    http://192.0.2.10
+
+[...]
+
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, nginx is successfully installed and working.
+Further configuration is required for the web server, reverse proxy,
+API gateway, load balancer, content cache, or other features.</p>
+
+[...]
+
+$ curl --resolve nginx.lab.test:80:192.0.2.10 \
+    http://nginx.lab.test
+
+[...]
+
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, nginx is successfully installed and working.
+Further configuration is required for the web server, reverse proxy,
+API gateway, load balancer, content cache, or other features.</p>
+
+
+=== Validation finale des TP 04–06 ===
+
+$ kubectl get deploy,rs,pods,svc,ingress -o wide
+kubectl rollout history deployment/nginx
+kubectl get ingressclass
+kubectl top pods
+curl -I -H 'Host: nginx.lab.test' http://192.0.2.10
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES         SELECTOR
+deployment.apps/nginx   3/3     3            3           88m   nginx        nginx:alpine   app=nginx
+
+NAME                               DESIRED   CURRENT   READY   AGE     CONTAINERS   IMAGES                      SELECTOR
+replicaset.apps/nginx-68bb5c6855   3         3         3       6m32s   nginx        nginx:alpine                app=nginx,pod-template-hash=68bb5c6855
+replicaset.apps/nginx-7b8b87776c   0         0         0       88m     nginx        nginx:alpine                app=nginx,pod-template-hash=7b8b87776c
+replicaset.apps/nginx-9cf4588f5    0         0         0       5m19s   nginx        nginx:version-inexistante   app=nginx,pod-template-hash=9cf4588f5
+
+NAME                         READY   STATUS    RESTARTS   AGE     IP           NODE   NOMINATED NODE   READINESS GATES
+pod/nginx-68bb5c6855-54shj   1/1     Running   0          6m29s   198.51.100.19   lab-node   <none>           <none>
+pod/nginx-68bb5c6855-8f5sj   1/1     Running   0          6m32s   198.51.100.17   lab-node   <none>           <none>
+pod/nginx-68bb5c6855-l6n8w   1/1     Running   0          6m30s   198.51.100.18   lab-node   <none>           <none>
+
+NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+service/nginx   ClusterIP   203.0.113.29   <none>        80/TCP    49m   app=nginx
+
+NAME                              CLASS     HOSTS            ADDRESS          PORTS   AGE
+ingress.networking.k8s.io/nginx   traefik   nginx.lab.test   192.0.2.10   80      106s
+deployment.apps/nginx
+REVISION  CHANGE-CAUSE
+1         <none>
+3         <none>
+4         <none>
+
+NAME                CONTROLLER                      PARAMETERS   AGE
+traefik (default)   traefik.io/ingress-controller   <none>       104m
+NAME                     CPU(cores)   MEMORY(bytes)
+nginx-68bb5c6855-54shj   1m           5Mi
+nginx-68bb5c6855-8f5sj   1m           4Mi
+nginx-68bb5c6855-l6n8w   1m           4Mi
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Content-Length: 896
+Content-Type: text/html
+
+[...]
+
+Server: nginx/1.31.10

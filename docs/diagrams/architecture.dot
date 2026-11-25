@@ -1,0 +1,25 @@
+digraph G {
+graph [bgcolor="#ffffff", pad="0.28", nodesep="0.32", ranksep="0.45", fontname="DejaVu Sans", fontcolor="#15253c", fontsize=18, labelloc=t, labeljust=l, splines=polyline];
+node [shape=box, style="rounded,filled", fillcolor="#eef4ff", color="#8eaae0", fontcolor="#15253c", fontname="DejaVu Sans", fontsize=11, margin="0.18,0.12", penwidth=1.3];
+edge [color="#72839c", penwidth=1.4, arrowsize=.65, fontname="DejaVu Sans", fontsize=9, fontcolor="#52647c"];
+label="01  /  Architecture du cluster K3s"; rankdir=TB;
+client [label="Administrateur
+ kubectl · crictl", fillcolor="#f1f5f9", color="#b2c0d1"];
+subgraph cluster_host { label="AlmaLinux 10  /  lab-node  /  nœud unique"; style="rounded,filled"; color="#b7c6dc"; fillcolor="#f7f9fc"; fontname="DejaVu Sans"; fontsize=13;
+ subgraph cluster_cp { label="CONTROL PLANE"; style="rounded,filled"; fillcolor="#edf3ff"; color="#9bb5e9"; fontsize=11;
+ api [label="API Server", fillcolor="#326ce5", color="#326ce5", fontcolor=white]; scheduler [label="Scheduler"]; controller [label="Controller Manager"]; db [label="SQLite*", shape=cylinder]; {rank=same; scheduler; controller; db;} api -> {scheduler controller db} [dir=both]; }
+ subgraph cluster_worker { label="RUNTIME & WORKLOADS"; style="rounded,filled"; fillcolor="#eef9f5"; color="#9bcdbd"; fontsize=11;
+ kubelet [label="kubelet"]; runtime [label="containerd"]; kubelet -> runtime;
+ {rank=same; dns; traefik; metrics;} {rank=same; storage; workload;} dns [label="CoreDNS
+DNS interne", fillcolor="#ffffff",color="#9bcdbd"]; traefik [label="Traefik
+Ingress",fillcolor="#ffffff",color="#9bcdbd"]; metrics [label="Metrics Server
+CPU / RAM",fillcolor="#ffffff",color="#9bcdbd"]; storage [label="local-path
+Stockage",fillcolor="#ffffff",color="#9bcdbd"]; workload [label="Namespace lab
+Nginx × 3",fillcolor="#d9f3e7",color="#75bca6"];
+ runtime -> {dns traefik metrics}; dns -> storage [style=invis]; traefik -> workload [style=invis]; runtime -> {storage workload} [constraint=false]; 
+ }
+ api -> kubelet [label="état souhaité / statut", dir=both];
+ net [label="Flannel · réseau des Pods",fillcolor="#fff5df",color="#e4b767"]; runtime -> net [style=dashed,arrowhead=none];
+}
+client -> api; note [shape=plaintext,label="* Datastore par défaut K3s mononœud, non inspecté pendant le lab.",fontsize=9,fontcolor="#52647c"]; storage -> note [style=invis];
+}

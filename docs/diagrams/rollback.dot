@@ -1,0 +1,17 @@
+digraph G {
+graph [bgcolor="#ffffff", pad="0.28", nodesep="0.32", ranksep="0.45", fontname="DejaVu Sans", fontcolor="#15253c", fontsize=18, labelloc=t, labeljust=l, splines=polyline];
+node [shape=box, style="rounded,filled", fillcolor="#eef4ff", color="#8eaae0", fontcolor="#15253c", fontname="DejaVu Sans", fontsize=11, margin="0.18,0.12", penwidth=1.3];
+edge [color="#72839c", penwidth=1.4, arrowsize=.65, fontname="DejaVu Sans", fontsize=9, fontcolor="#52647c"];
+label="04  /  Incident image et retour à un état sain"; rankdir=TB;
+subgraph cluster_ok { label="01 · Version saine";style="rounded,filled";fontsize=13;fillcolor="#f7f9fc";color="#b7c6dc"; ok [label="nginx:alpine
+3/3 Pods prêts",fillcolor="#d9f3e7",color="#75bca6"]; }
+subgraph cluster_fail { label="02 · Mise à jour volontairement défectueuse";style="rounded,filled";fontsize=13;fillcolor="#fff9ee";color="#e4b767"; old [label="Ancien ReplicaSet
+3 Pods prêts",fillcolor="#d9f3e7",color="#75bca6"]; bad [label="Nouveau ReplicaSet
+nginx:version-inexistante
+0/1 · ImagePullBackOff",fillcolor="#fdecec",color="#d99595"]; {rank=same;old;bad;} }
+subgraph cluster_fix { label="03 · Rollback";style="rounded,filled";fontsize=13;fillcolor="#f7f9fc";color="#b7c6dc"; restore [label="nginx:alpine
+3/3 Pods prêts
+Diff YAML : vide",fillcolor="#d9f3e7",color="#359b76",penwidth=2]; }
+ok -> old [label="Pods conservés"]; ok -> bad [label="kubectl set image"]; old -> restore; bad -> restore [label="kubectl rollout undo",color="#d97706"]; end [shape=plaintext,label="Validation HTTP 200 après restauration.
+Disponibilité continue non mesurée durant l’incident.",fontsize=10,fontcolor="#52647c"];restore -> end [style=dashed,arrowhead=none];
+}

@@ -1,0 +1,21 @@
+digraph G {
+graph [bgcolor="#ffffff", pad="0.28", nodesep="0.32", ranksep="0.45", fontname="DejaVu Sans", fontcolor="#15253c", fontsize=18, labelloc=t, labeljust=l, splines=polyline];
+node [shape=box, style="rounded,filled", fillcolor="#eef4ff", color="#8eaae0", fontcolor="#15253c", fontname="DejaVu Sans", fontsize=11, margin="0.18,0.12", penwidth=1.3];
+edge [color="#72839c", penwidth=1.4, arrowsize=.65, fontname="DejaVu Sans", fontsize=9, fontcolor="#52647c"];
+label="03  /  Self-healing : maintien de trois réplicas"; rankdir=TB;
+dep [label="Deployment nginx
+replicas: 3",fillcolor="#326ce5",fontcolor=white,color="#326ce5"]; rs [label="ReplicaSet nginx-7b8b87776c"]; dep -> rs;
+subgraph cluster_before { label="AVANT  /  3 Pods prêts"; style="rounded,filled"; fontsize=13; fillcolor="#f7f9fc"; color="#b7c6dc";
+{rank=same; a;b;c;} a [label="4jgql
+198.51.100.12",fillcolor="#d9f3e7",color="#75bca6"]; b [label="6g7cg
+198.51.100.11",fillcolor="#d9f3e7",color="#75bca6"]; c [label="jgpb2
+198.51.100.13",fillcolor="#d9f3e7",color="#75bca6"]; }
+rs -> {a b c}; event [label="Suppression volontaire de 4jgql
+ReplicaSet : création d’un nouveau Pod",fillcolor="#fff5df",color="#e4b767"]; a -> event [color="#d97706"];
+subgraph cluster_after { label="APRÈS  /  3 Pods prêts"; style="rounded,filled"; fontsize=13; fillcolor="#f7f9fc"; color="#b7c6dc";
+{rank=same; d;e;f;} d [label="hr8xn · NOUVEAU
+198.51.100.16",fillcolor="#d9f3e7",color="#359b76",penwidth=2];e [label="6g7cg
+198.51.100.11",fillcolor="#d9f3e7",color="#75bca6"];f [label="jgpb2
+198.51.100.13",fillcolor="#d9f3e7",color="#75bca6"];}
+event -> d; b -> e [style=dashed]; c -> f [style=dashed];
+}
